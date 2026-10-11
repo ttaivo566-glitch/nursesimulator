@@ -1,0 +1,194 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><title>Điều dưỡng khoa Ngoại</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<style>
+:root{--bg:#dfe9ef;--fg:#12303a;--pn:#ffffffee;--ac:#1f9c8c;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101a26;--fg:#e9f2f6;--pn:#16232fee}}
+:root[data-theme="dark"]{--bg:#101a26;--fg:#e9f2f6;--pn:#16232fee}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--fg);font-family:system-ui,"Segoe UI",Roboto,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
+canvas{position:fixed;inset:0;width:100%;height:100%}
+#hud{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;display:flex;gap:10px;align-items:center;padding:6px 12px;background:var(--pn);font-size:13px;pointer-events:none}
+#hud b{white-space:nowrap}#ob{flex:1;font-weight:600}#tm{font-variant-numeric:tabular-nums;font-weight:700}
+#toast{position:fixed;left:50%;top:52px;transform:translateX(-50%);background:#000b;color:#fff;padding:6px 14px;border-radius:16px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none;max-width:70%;text-align:center}
+#joy{position:fixed;left:calc(34px + env(safe-area-inset-left,0px));bottom:calc(28px + env(safe-area-inset-bottom,0px));width:150px;height:150px;border-radius:50%;background:#ffffff26;border:3px solid #ffffff77;opacity:.5;pointer-events:none;box-sizing:border-box}#jz{position:fixed;left:0;top:56px;bottom:0;width:48%;touch-action:none}
+#knob{position:absolute;left:40px;top:40px;width:64px;height:64px;border-radius:50%;background:#ffffffcc;box-shadow:0 2px 6px #0006}
+#btn{position:fixed;right:calc(30px + env(safe-area-inset-right,0px));bottom:calc(30px + env(safe-area-inset-bottom,0px));width:128px;height:128px;padding:0 8px;border-radius:64px;border:3px solid #fff;background:var(--ac);color:#fff;font-size:14px;font-weight:700;opacity:.55;touch-action:none}
+#btn.on{opacity:1;box-shadow:0 0 0 4px #1f9c8c66}
+#spd{position:fixed;right:calc(176px + env(safe-area-inset-right,0px));bottom:calc(36px + env(safe-area-inset-bottom,0px));width:70px;height:70px;border-radius:50%;border:3px solid #fff;background:#e8a317;color:#fff;font-size:28px;opacity:.85;touch-action:none}
+#sb{position:fixed;left:12px;top:calc(42px + env(safe-area-inset-top,0px));width:120px;height:10px;border-radius:5px;background:#0006;overflow:hidden}#sf{display:block;height:100%;width:100%;background:#3ddc97}
+#ov{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0008}
+.p{background:var(--pn);padding:16px 22px;border-radius:14px;max-width:560px;text-align:center;max-height:92%;overflow:auto}
+.p h1{margin:0 0 4px;font-size:22px}.p small{opacity:.75}
+.p button{margin:4px;padding:8px 14px;border-radius:10px;border:0;background:var(--ac);color:#fff;font-weight:700;font-size:14px}
+.p button:disabled{opacity:.4}
+.sw{display:inline-block;width:30px;height:30px;border-radius:50%;margin:4px;border:3px solid transparent;cursor:pointer}.sw.s{border-color:var(--fg)}
+#rot{display:none;position:fixed;inset:0;background:#000d;color:#fff;align-items:center;justify-content:center;font-size:20px;z-index:9;text-align:center}
+@media (orientation:portrait){#rot{display:flex}}
+</style></head><body>
+<canvas id="c"></canvas>
+<div id="hud"><b id="ln"></b><span id="ob"></span><span id="tm"></span></div>
+<div id="toast"></div>
+<div id="jz"></div><div id="joy"><div id="knob"></div></div>
+<button id="btn">Tương tác</button><button id="spd">⚡</button><div id="sb"><i id="sf"></i></div>
+<div id="ov"></div>
+<div id="rot">📱 Hãy xoay ngang màn hình để chơi</div>
+<script>
+const C=document.getElementById('c'),X=C.getContext('2d'),$=id=>document.getElementById(id);
+let W,H,D=devicePixelRatio||1,Z=1;
+function rs(){W=innerWidth;H=innerHeight;C.width=W*D;C.height=H*D;Z=Math.max(.75,H/400)}
+addEventListener('resize',rs);rs();
+const TW=64,TH=32,MW=64,MH=26,P=(x,y)=>[(x-y)*TW/2,(x+y)*TH/2];
+function sh(h,f){const n=parseInt(h.slice(1),16);return`rgb(${(n>>16)*f|0},${(n>>8&255)*f|0},${(n&255)*f|0})`}
+// ---- MAP ----
+const fl=[],zc=[],fc=[],WL=[];for(let y=0;y<MH;y++){fl.push(Array(MW).fill(0));zc.push(Array(MW).fill(''));}
+function R(a,b,c,d,col){for(let y=b;y<=d;y++)for(let x=a;x<=c;x++){fl[y][x]=1;zc[y][x]=col}}
+const blk=Array.from({length:MH},()=>Array(MW).fill(0)),O=[],S=[],DR=[],dm={};
+R(1,10,54,12,'#dadee4');
+const EV=[[2,'320'],[8,'318'],[14,'316'],[20,'314'],[26,'312']];
+function door(x,y,n,col){fl[y][x]=1;zc[y][x]=col;const d={x,y,n,o:false};DR.push(d);dm[y*MW+x]=d;S.push({k:x+y+1,d,f:()=>drDraw(d)})}
+EV.forEach(([s,n])=>{R(s,4,s+4,8,'#cfe3f2');door(s+2,9,n,'#cfe3f2')});
+R(32,4,43,9,'#ebe5cf');R(45,4,50,8,'#d4ebd8');door(47,9,'Tiểu phẫu','#d4ebd8');R(52,3,54,8,'#dfe3e8');door(53,9,'Lối thang','#dfe3e8');R(56,6,62,12,'#ecdcc8');door(55,11,'Bác sĩ','#ecdcc8');
+R(15,14,22,24,'#e6e3d8');door(18,13,'319','#e6e3d8');R(24,14,31,24,'#e6e3d8');door(27,13,'317','#e6e3d8');
+R(33,14,42,20,'#e1e8f0');door(37,13,'315','#e1e8f0');R(11,13,13,20,'#dfe3e8');
+R(48,14,57,19,'#f2e0e8');door(52,13,'Phòng ngủ ĐD','#f2e0e8');
+for(let y=0;y<MH;y++){fc.push([]);for(let x=0;x<MW;x++)fc[y].push(fl[y][x]?sh(zc[y][x],(x+y)&1?.985:1):'')}
+for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){if(fl[y][x])continue;let a=0;for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++){const yy=y+j,xx=x+i;if(yy>=0&&xx>=0&&yy<MH&&xx<MW&&fl[yy][xx])a=1}
+ if(a)WL.push([x,y])}
+const rid=Array.from({length:MH},()=>Array(MW).fill(-2));let nr=0;
+for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){if(!fl[y][x]||dm[y*MW+x]||rid[y][x]!==-2)continue;const q=[[x,y]];rid[y][x]=nr;while(q.length){const[a,b]=q.pop();for(const[i,j]of[[1,0],[-1,0],[0,1],[0,-1]]){const u=a+i,v=b+j;if(u>=0&&v>=0&&u<MW&&v<MH&&fl[v][u]&&!dm[v*MW+u]&&rid[v][u]===-2){rid[v][u]=nr;q.push([u,v])}}}nr++}
+DR.forEach(d=>{const s=new Set();for(const[i,j]of[[1,0],[-1,0],[0,1],[0,-1]]){const u=d.x+i,v=d.y+j;if(u>=0&&v>=0&&u<MW&&v<MH&&rid[v][u]>=0)s.add(rid[v][u])}d.r=[...s]});
+const rg=(x,y)=>{x=Math.floor(x);y=Math.floor(y);for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++){const u=x+i,v=y+j;if(u>=0&&v>=0&&u<MW&&v<MH&&rid[v][u]>=0)return rid[v][u]}return -1};
+const WS=new Set(WL.map(([x,y])=>x+','+y)),WH=46,HID=rid[11][10];let VS=new Set();
+const wl=(x,y)=>x>=0&&y>=0&&x<MW&&y<MH&&(WS.has(x+','+y)||!!dm[y*MW+x]);
+function wallDraw(x,y,ar){const c='#f1e6cc',fr=x+y+1>pp.x+pp.y;let al=1;if(fr&&Math.abs(x+.5-pp.x)<2.3&&Math.abs(y+.5-pp.y)<2.3)al=.3;else if(fr&&!VS.has(HID)&&ar.some(r=>VS.has(r)))al=.5;X.globalAlpha=al;NS=1;
+ if(wl(x,y-1))box(x+.4,y,.2,.4,WH,c);if(wl(x-1,y))box(x,y+.4,.4,.2,WH,c);box(x+.4,y+.4,.2,.2,WH,c);if(wl(x+1,y))box(x+.6,y+.4,.4,.2,WH,c);if(wl(x,y+1))box(x+.4,y+.6,.2,.4,WH,c);X.globalAlpha=1;NS=0}
+WL.forEach(([x,y])=>{const a=new Set();for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++){const u=x+i,v=y+j;if(u>=0&&v>=0&&u<MW&&v<MH&&rid[v][u]>=0)a.add(rid[v][u])}const ar=[...a];S.push({k:x+y+1,rs:ar,f:()=>wallDraw(x,y,ar)})});
+function add(id,x,y,w,h,z,c,nm,o={}){const ob={id,x,y,w,h,z,c,nm,...o};O.push(ob);for(let j=0;j<h;j++)for(let i=0;i<w;i++)blk[y+j][x+i]=1;ob.rs=[rg(x,y)];S.push({k:x+w/2+y+h/2,rs:ob.rs,f:()=>ob.d?ob.d(ob):box(x,y,w,h,z,c)});return ob}
+function dec(x,y,w,h,z0,z,c){S.push({k:x+w/2+y+h/2+.2,rs:[rg(x,y)],f:()=>box(x,y,w,h,z,c,z0)})}
+let NS=0;
+function fy(x,y,zt,fn){const p=P(x,y);X.save();X.transform(1,.5,0,1,p[0],p[1]-zt);fn();X.restore()}
+function fx(x,y,zt,fn){const p=P(x,y);X.save();X.transform(1,-.5,0,1,p[0],p[1]-zt);fn();X.restore()}
+function tg(s,u,v,f,col){X.font='bold '+f+'px sans-serif';X.textAlign='center';X.fillStyle=col;X.fillText(s,u,v)}
+function dSup(o){box(34,4,5,1,44,'#cfd6dc');
+ fy(34,5,44,()=>{const L=[['THUỐC',''],['DỊCH','TRUYỀN'],['DÂY','TRUYỀN'],['VẬT TƯ','KHÁC']],C=[['#ffffff','#9ec9ff','#ffb3b3','#fff1a8'],['#bfe6f2','#d5f0d0','#bfe6f2','#d5f0d0'],['#e8f4f8','#cfe3ea','#e8f4f8','#cfe3ea'],['#f5f0e6','#cdb89a','#9fb8a8','#f5f0e6']];
+  L.forEach((l,i)=>{const u=i*40+2;X.fillStyle='#46505a';X.fillRect(u,2,36,40);X.fillStyle='#2f6f8f';X.fillRect(u,2,36,12);tg(l[0],u+18,l[1]?7:10,6,'#fff');if(l[1])tg(l[1],u+18,12.8,6,'#fff');
+   X.fillStyle='#9aa5af';X.fillRect(u,27,36,1.5);X.fillRect(u,41,36,1.5);
+   for(let k=0;k<4;k++){X.fillStyle=C[i][k];const h=7+(k%2)*3;X.fillRect(u+3+k*8.5,27-h,7,h);X.fillRect(u+3+k*8.5,41-h,7,h-1)}})})}
+function dRec(o){box(32,4,1,5,50,'#b8a98a');
+ fx(33,9,50,()=>{const R1=['312','314','316','318','320'],R2=['315','317','319','MỚI','RA VIỆN'],Y=['#f2c230','#e8b01c','#f6d35a'];
+  [R1,R2].forEach((R,r)=>R.forEach((t,c)=>{const u=c*32+1,v=2+r*17;X.fillStyle='#4a3f2a';X.fillRect(u,v,30,16);X.fillStyle='#fffbe6';X.fillRect(u+2,v+1,26,6.5);tg(t,u+15,v+6.6,6,'#222');
+    for(let k=0;k<6;k++){X.fillStyle=Y[k%3];X.fillRect(u+2+k*4.3,v+8.5,3.6,7.5)}}));
+  X.fillStyle='#9c8a66';X.fillRect(0,36,160,14);for(let c=0;c<5;c++){X.fillStyle='#8a7a58';X.fillRect(c*32+2,38,28,10);X.fillStyle='#d9c9a0';X.fillRect(c*32+13,41,6,2)}})}
+const BL=['#7fb4e0','#e6a3b8','#9fd3a6','#e8cf8a','#b9a6e0'];let bi=0;
+function bed(r,n,x,y,h){add(r+'-'+n,x,y,2,1,8,'#dfe6ee','Giường '+r+'-'+n,{int:1,bed:1,hd:h,bl:BL[bi++%5],d:dBed})}
+function dBed(o){box(o.x,o.y,2,1,8,'#dfe6ee');const r=o.hd;box(o.x+(r?1.5:.05),o.y+.1,.45,.8,10,'#ffffff');box(o.x+(r?.1:.6),o.y+.1,1.3,.8,11,o.bl);
+ const p=P(o.x+(r?1.7:.3),o.y+.5);X.fillStyle='#f0c9a4';X.beginPath();X.arc(p[0],p[1]-14,5,0,7);X.fill()}
+EV.forEach(([s,n])=>{[0,1,2].forEach(k=>bed(n,k+1,s+3,4+2*k,1));dec(s+1,3.6,1,.4,16,23,'#f4f8fb')});
+[[15,'319'],[24,'317']].forEach(([s,n])=>{for(let j=0;j<5;j++){bed(n,2*j+1,s,15+2*j,0);bed(n,2*j+2,s+6,15+2*j,1)}dec(s+3,25,2,.4,16,22,'#555d66')});
+for(let j=0;j<3;j++){bed('315',2*j+1,33,15+2*j,0);bed('315',2*j+2,41,15+2*j,1);add('mon'+j,35,15+2*j,1,1,14,'#2d3a45','Máy hồi sức');add('mop'+j,40,15+2*j,1,1,14,'#2d3a45','Máy hồi sức')}dec(37,21,2,.4,16,23,'#f4f8fb');
+add('sup',34,4,5,1,44,'#cfd6dc','Kho vật tư',{int:1,d:dSup});add('rec',32,4,1,5,50,'#b8a98a','Tủ hồ sơ bệnh án',{int:1,d:dRec});add('duty',40,4,3,2,9,'#7b8fb5','Phòng nghỉ trực',{int:1});
+add('desk',35,6,5,2,11,'#b9895b','Bàn nhận bệnh',{int:1});
+[35,37,39].forEach(x=>{dec(x+.15,5.2,.7,.7,0,9,'#3b6ea5');dec(x+.15,5.05,.7,.15,9,22,'#2f5885');dec(x+.15,8.1,.7,.7,0,9,'#3b6ea5');dec(x+.15,8.8,.7,.15,9,22,'#2f5885')});
+[33,35,40,42].forEach(x=>{dec(x+.4,9.35,.2,.2,10,12,'#666666');dec(x+.1,9.3,.8,.12,12,21,'#1c2a38');dec(x+.15,9.55,.7,.3,10,10.8,'#d5dbe0')});add('dk1',32,9,5,1,10,'#a67c52','Bàn hành chính');add('dk2',39,9,5,1,10,'#a67c52','Bàn hành chính');
+
+add('surg',47,5,2,2,9,'#cfd8dc','Bàn tiểu phẫu',{int:1});add('sink',50,6,1,1,12,'#9fb6c4','Bồn rửa tay',{int:1});
+add('doc',58,7,3,1,10,'#9c7a5b','Bàn bác sĩ',{int:1});
+add('lift',52,3,3,1,38,'#9aa7b4','Thang máy',{int:1});add('stairs',11,18,3,3,12,'#8c96a0','Cầu thang bộ',{int:1});
+add('ward',48,15,1,2,34,'#c9a27a','Tủ đồ (đổi trang phục)',{int:1});
+add('nb1',54,15,2,1,8,'#e9eef5','Giường ĐD');add('nb2',54,18,2,1,8,'#e9eef5','Giường ĐD');
+function box(x,y,w,h,z,c,z0=0){const A=P(x,y),B=P(x+w,y),Q=P(x+w,y+h),Dd=P(x,y+h),t=-z,b=-z0;
+ pl([[A[0],A[1]+t],[B[0],B[1]+t],[Q[0],Q[1]+t],[Dd[0],Dd[1]+t]],sh(c,1.08));
+ pl([[Dd[0],Dd[1]+b],[Q[0],Q[1]+b],[Q[0],Q[1]+t],[Dd[0],Dd[1]+t]],sh(c,.78));
+ pl([[B[0],B[1]+b],[Q[0],Q[1]+b],[Q[0],Q[1]+t],[B[0],B[1]+t]],sh(c,.58))}
+function pl(a,c){X.beginPath();X.moveTo(a[0][0],a[0][1]);for(let i=1;i<a.length;i++)X.lineTo(a[i][0],a[i][1]);X.closePath();X.fillStyle=c;X.fill();X.strokeStyle=NS?c:'#0002';X.lineWidth=NS?1:.6;X.stroke()}
+function drDraw(d){const h=wl(d.x-1,d.y),c='#b98a5c',hh=WH-4;if(d.o){if(h)box(d.x,d.y,.12,.9,hh,c);else box(d.x,d.y,.9,.12,hh,c)}else{if(h)box(d.x,d.y+.4,1,.2,hh,c);else box(d.x+.4,d.y,.2,1,hh,c)}
+ const p=P(d.x+.5,d.y+.5);X.font='bold 11px sans-serif';X.textAlign='center';X.lineWidth=3;X.strokeStyle='#000a';X.fillStyle='#fff';X.strokeText(d.n,p[0],p[1]-WH-6);X.fillText(d.n,p[0],p[1]-WH-6);
+ const pw=Math.max(26,d.n.length*5.6+6);
+ if(h)fy(d.x+1.06,d.y+.61,WH,()=>{X.fillStyle='#fffdf3';X.fillRect(0,16,pw,11);X.strokeStyle='#8a7a58';X.lineWidth=.6;X.strokeRect(0,16,pw,11);tg(d.n,pw/2,24,7,'#222')});
+ else fx(d.x+.61,d.y,WH,()=>{X.fillStyle='#fffdf3';X.fillRect(2,16,pw,11);X.strokeStyle='#8a7a58';X.lineWidth=.6;X.strokeRect(2,16,pw,11);tg(d.n,2+pw/2,24,7,'#222')});
+ if(h&&rid[d.y-1][d.x]!==HID){const q=P(d.x+.5,d.y-.5);X.save();X.transform(1,.5,-1,.5,q[0],q[1]);X.fillStyle='#fffdf3cc';X.fillRect(-14,-14,28,28);tg(d.n,0,4,11,'#333');X.restore()}}
+S.sort((a,b)=>a.k-b.k);
+const solid=(x,y)=>{const cx=Math.floor(x),cy=Math.floor(y);if(cx<0||cy<0||cx>=MW||cy>=MH||!fl[cy][cx]||blk[cy][cx])return 1;const d=dm[cy*MW+cx];return d&&!d.o?1:0};
+const hit=(x,y)=>solid(x-.22,y-.22)||solid(x+.22,y-.22)||solid(x-.22,y+.22)||solid(x+.22,y+.22);
+// ---- GAME DATA ----
+const OF=[{n:'Xanh dương',t:'#2f80d0',b:'#2a6aa8'},{n:'Hồng',t:'#e87aa0',b:'#c85d84'},{n:'Xanh lá',t:'#33a67a',b:'#2a8a63'},{n:'Trắng',t:'#f3f5f7',b:'#cfd6dd'},{n:'Xanh ngọc',t:'#2fb3a3',b:'#238a7d'}];
+let oi=0;
+const s=(o,t,v,c)=>({o,t,v,c});
+let LV=[
+{n:'Màn 1: Nhận ca & đo sinh hiệu',t:130,s:[s('desk','Nhận bàn giao ca ở bàn hành chính','Nhận bàn giao'),s('312-1','Đo sinh hiệu giường 1, phòng 312','Đo sinh hiệu'),s('312-2','Đo sinh hiệu giường 2, phòng 312','Đo sinh hiệu'),s('312-3','Đo sinh hiệu giường 3, phòng 312','Đo sinh hiệu')]},
+{n:'Màn 2: Phát thuốc',t:150,s:[s('sup','Lấy thuốc ở tủ thuốc khu hành chính','Lấy thuốc','💊'),s('314-1','Phát thuốc phòng 314, giường 1','Phát thuốc'),s('314-3','Phát thuốc phòng 314, giường 3','Phát thuốc'),s('316-2','Phát thuốc phòng 316, giường 2','Phát thuốc'),s('318-1','Phát thuốc phòng 318, giường 1','Phát thuốc','')]},
+{n:'Màn 3: Truyền dịch',t:170,s:[s('sup','Lấy dịch truyền ở kho vật tư','Lấy dịch truyền','🧴'),s('315-1','Truyền dịch phòng 315, giường 1','Truyền dịch'),s('315-5','Truyền dịch phòng 315, giường 5','Truyền dịch'),s('317-3','Truyền dịch phòng 317, giường 3','Truyền dịch'),s('317-8','Truyền dịch phòng 317, giường 8','Truyền dịch','')]},
+{n:'Màn 4: Thay băng & tiểu phẫu',t:200,s:[s('surg','Chuẩn bị bàn ở phòng tiểu phẫu','Chuẩn bị bàn'),s('sink','Rửa tay vô khuẩn','Rửa tay'),s('sup','Lấy bộ thay băng ở kho vật tư','Lấy bộ băng','🩹'),s('319-4','Thay băng phòng 319, giường 4','Thay băng'),s('319-9','Thay băng phòng 319, giường 9','Thay băng'),s('surg','Dọn dụng cụ ở phòng tiểu phẫu','Dọn dụng cụ','')]},
+{n:'Màn 5: Ca trực tổng hợp',t:260,s:[s('desk','Nhận bệnh mới ở bàn hành chính','Nhận bệnh'),s('320-2','Đo sinh hiệu bệnh nhân mới, phòng 320','Đo sinh hiệu'),s('sup','Lấy thuốc ở tủ thuốc khu hành chính','Lấy thuốc','💊'),s('320-2','Phát thuốc cho bệnh nhân phòng 320','Phát thuốc',''),s('315-2','Hỗ trợ bệnh nhân hồi sức phòng 315','Hỗ trợ'),s('lift','Đưa bệnh nhân đi cận lâm sàng bằng thang máy','Gọi thang máy'),s('doc','Báo cáo bác sĩ','Báo cáo'),s('duty','Về phòng nghỉ trực','Nghỉ trực')]}];
+let st='menu',lv=0,si=0,timer=0,carry='',acting=null,near=null,unlocked=1,t0=0;
+const pl_={x:37.5,y:11.5},cam={x:0,y:0};const pp=pl_;
+const kb={};let jv=[0,0];let sta=100,exh=0,rn=0;
+// ---- INPUT ----
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();kb[k]=1;if(k==='e'||k===' '||k==='enter'){e.preventDefault();act()}if(k.startsWith('arrow'))e.preventDefault()});
+addEventListener('keyup',e=>delete kb[e.key.toLowerCase()]);
+const J=$('joy'),K=$('knob');let jid=null;
+function mv(e){const r=J.getBoundingClientRect(),R=r.width/2;let dx=e.clientX-r.left-R,dy=e.clientY-r.top-R;const m=Math.hypot(dx,dy);if(m>R){dx*=R/m;dy*=R/m}jv=[dx/R,dy/R];K.style.transform=`translate(${dx*.55}px,${dy*.55}px)`}
+const JZ=$('jz');JZ.addEventListener('pointerdown',e=>{if(jid!==null)return;jid=e.pointerId;JZ.setPointerCapture(jid);const R=75,x=Math.min(Math.max(e.clientX,R+8),innerWidth*.48),y=Math.min(Math.max(e.clientY,R+60),innerHeight-R-8);J.style.left=(x-R)+'px';J.style.top=(y-R)+'px';J.style.bottom='auto';J.style.opacity=1;mv(e)});
+JZ.addEventListener('pointermove',e=>{if(e.pointerId===jid)mv(e)});
+const ju=e=>{if(e.pointerId===jid){jid=null;jv=[0,0];K.style.transform='';J.style.left='';J.style.top='';J.style.bottom='';J.style.opacity=''}};['pointerup','pointercancel','lostpointercapture'].forEach(n=>JZ.addEventListener(n,ju));
+const SP=$('spd');SP.addEventListener('pointerdown',e=>{e.preventDefault();SP.setPointerCapture(e.pointerId);rn=1});['pointerup','pointercancel','lostpointercapture'].forEach(n=>SP.addEventListener(n,()=>{rn=0}));
+addEventListener('blur',()=>{for(const k in kb)delete kb[k];jv=[0,0];rn=0;K.style.transform=''});
+$('btn').addEventListener('pointerdown',e=>{e.preventDefault();act()});
+function say(m){const t=$('toast');t.textContent=m;t.style.opacity=1;clearTimeout(say.h);say.h=setTimeout(()=>t.style.opacity=0,2200)}
+const rd=(x,y,w,h)=>Math.hypot(Math.max(x-pp.x,0,pp.x-x-w),Math.max(y-pp.y,0,pp.y-y-h));
+function findNear(){let b=null,bd=1.05;for(const d of DR){const q=rd(d.x,d.y,1,1);if(q<bd){bd=q;b={dr:d}}}
+ for(const o of O){if(!o.int||!o.rs.some(r=>VS.has(r)))continue;const q=rd(o.x,o.y,o.w,o.h);if(q<bd){bd=q;b=o}}return b}
+const cur=()=>LV[lv].s[si];
+function act(){if(st!=='play'||acting||!near)return;const n=near;
+ if(n.dr){const d=n.dr;if(d.o&&Math.floor(pp.x)===d.x&&Math.floor(pp.y)===d.y)return say('Bước ra khỏi cửa trước đã');d.o=!d.o;return say((d.o?'Mở':'Đóng')+' cửa '+d.n)}
+ const q=cur();if(q&&q.o===n.id){acting={t:0,d:1.3,v:q.v};return}
+ if(n.id==='ward'){oi=(oi+1)%OF.length;return say('Đổi trang phục: '+OF[oi].n)}
+ say(n.bed?'Bệnh nhân ổn định, chưa cần can thiệp':'Chưa cần làm ở đây')}
+function fin(){const q=cur();acting=null;if('c' in q)carry=q.c;si++;say('✔ Hoàn thành: '+q.v);if(si>=LV[lv].s.length)end(true)}
+function end(w){st=w?'win':'lose';if(w)unlocked=Math.max(unlocked,Math.min(lv+2,LV.length));
+ const f=timer/LV[lv].t,stars=f>.5?3:f>.25?2:1;
+ $('ov').style.display='flex';$('ov').innerHTML=`<div class="p"><h1>${w?'Hoàn thành ca! '+'⭐'.repeat(stars):'Hết giờ ⏰'}</h1><p>${LV[lv].n}</p>${w?`<small>Còn lại ${Math.ceil(timer)} giây</small><br>`:''}<button onclick="start(${lv})">Chơi lại</button>${w&&lv+1<LV.length?`<button onclick="start(${lv+1})">Màn tiếp theo ▶</button>`:''}<button onclick="menu()">Menu</button></div>`}
+function start(i){applyLV();if(i>=LV.length)i=0;lv=i;si=0;timer=LV[i].t;carry='';acting=null;sta=100;exh=0;pp.x=37.5;pp.y=11.5;DR.forEach(d=>d.o=false);st='play';$('ov').style.display='none';$('ln').textContent='Màn '+(i+1);say(i==0?'Joystick/WASD để đi, giữ ⚡ (Shift) để chạy, nút Tương tác (E) để mở cửa & làm việc':'Bắt đầu ca trực!')}
+function menu(){applyLV();st='menu';$('ov').style.display='flex';
+ $('ov').innerHTML=`<div class="p"><h1>🏥 Điều dưỡng khoa Ngoại</h1><small>Chọn trang phục (cũng đổi được ở tủ đồ trong phòng ngủ ĐD)</small><div>${OF.map((o,i)=>`<span class="sw ${i==oi?'s':''}" style="background:${o.t}" onclick="oi=${i};menu()" title="${o.n}"></span>`).join('')}</div><div>${LV.map((l,i)=>`<button ${i<unlocked?'':'disabled'} onclick="start(${i})">${l.n}</button><br>`).join('')}</div></div>`}
+// ---- UPDATE / DRAW ----
+function upd(dt){if(st!=='play')return;timer-=dt;if(timer<=0){timer=0;return end(false)}
+ if(acting){acting.t+=dt;if(acting.t>=acting.d)fin();return}
+ let sx=(kb.arrowright||kb.d?1:0)-(kb.arrowleft||kb.a?1:0)+jv[0],sy=(kb.arrowdown||kb.s?1:0)-(kb.arrowup||kb.w?1:0)+jv[1];
+ const m=Math.hypot(sx,sy),mvg=m>.2,run=mvg&&(kb.shift||rn)&&sta>0&&!exh;if(run){sta-=32*dt;if(sta<=0){sta=0;exh=1}}else{sta=Math.min(100,sta+(mvg?18:30)*dt);if(exh&&sta>=25)exh=0}$('sf').style.width=sta+'%';$('sf').style.background=exh?'#e5484d':'#3ddc97';
+ if(mvg){let gx=sx+2*sy,gy=2*sy-sx;const g=Math.hypot(gx,gy),sp=(run?7.6:4.3)*Math.min(1,m);gx=gx/g*sp*dt;gy=gy/g*sp*dt;
+  if(!hit(pp.x+gx,pp.y))pp.x+=gx;if(!hit(pp.x,pp.y+gy))pp.y+=gy}
+ near=findNear()}
+function drawP(){const p=P(pp.x,pp.y),o=OF[oi];X.fillStyle='#0004';X.beginPath();X.ellipse(p[0],p[1],11,5,0,0,7);X.fill();
+ X.fillStyle=o.b;X.fillRect(p[0]-6,p[1]-12,12,10);X.fillStyle=o.t;X.fillRect(p[0]-7,p[1]-26,14,15);
+ X.fillStyle='#f0c9a4';X.beginPath();X.arc(p[0],p[1]-32,6.5,0,7);X.fill();X.fillStyle='#4a3326';X.beginPath();X.arc(p[0],p[1]-34,6.8,Math.PI,0);X.fill();
+ X.fillStyle='#fff';X.fillRect(p[0]-5,p[1]-41,10,4);X.fillStyle='#d33';X.fillRect(p[0]-1,p[1]-41,2,4);
+ if(carry){X.font='16px sans-serif';X.textAlign='center';X.fillText(carry,p[0]+13,p[1]-24)}
+ if(acting){X.fillStyle='#000a';X.fillRect(p[0]-18,p[1]-52,36,6);X.fillStyle='#3ddc97';X.fillRect(p[0]-17,p[1]-51,34*acting.t/acting.d,4)}}
+function draw(t){X.setTransform(D,0,0,D,0,0);X.fillStyle='#1b2736';X.fillRect(0,0,W,H);
+ const tp=P(pp.x,pp.y);if(!cam.x&&!cam.y){cam.x=tp[0];cam.y=tp[1]}cam.x+=(tp[0]-cam.x)*.12;cam.y+=(tp[1]-cam.y)*.12;
+ X.setTransform(D*Z,0,0,D*Z,D*(W/2-cam.x*Z),D*(H/2-cam.y*Z+30));
+ const pcx=Math.floor(pp.x),pcy=Math.floor(pp.y),pd=dm[pcy*MW+pcx];VS=new Set(pd?pd.r:[rid[pcy][pcx]]);const vx=(W/2)/Z+90,vy=(H/2)/Z+90;
+ for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){if(!fl[y][x])continue;const dd=dm[y*MW+x];if(dd?!dd.r.some(r=>VS.has(r)):!VS.has(rid[y][x]))continue;const p=P(x,y);if(Math.abs(p[0]-cam.x)>vx||Math.abs(p[1]-cam.y)>vy)continue;
+  X.fillStyle=fc[y][x];X.beginPath();X.moveTo(p[0],p[1]);X.lineTo(p[0]+32,p[1]+16);X.lineTo(p[0],p[1]+32);X.lineTo(p[0]-32,p[1]+16);X.closePath();X.fill();X.strokeStyle=fc[y][x];X.lineWidth=1.2;X.stroke()}
+ const pk=pp.x+pp.y+.05;let dp=0;
+ for(const it of S){if(!dp&&it.k>pk){drawP();dp=1}const rs=it.d?it.d.r:it.rs;if(rs&&!rs.some(r=>VS.has(r)))continue;it.f()}if(!dp)drawP();
+ const q=st==='play'?cur():null;
+ if(q){const o=O.find(o=>o.id===q.o),cx=o.x+o.w/2,cy=o.y+o.h/2,p=P(cx,cy);if(o.rs.some(r=>VS.has(r))){X.font='22px sans-serif';X.textAlign='center';X.fillText('❗',p[0],p[1]-o.z-12+Math.sin(t/200)*4)}
+  const dx=p[0]-tp[0],dy=p[1]-tp[1],d=Math.hypot(dx,dy);if(d>140){X.setTransform(D*Z,0,0,D*Z,D*(W/2-cam.x*Z),D*(H/2-cam.y*Z+30));const a=Math.atan2(dy,dx),ax=tp[0]+Math.cos(a)*58,ay=tp[1]-14+Math.sin(a)*34;
+   X.save();X.translate(ax,ay);X.rotate(a);X.fillStyle='#ffd23f';X.strokeStyle='#000a';X.beginPath();X.moveTo(10,0);X.lineTo(-6,-7);X.lineTo(-6,7);X.closePath();X.fill();X.stroke();X.restore()}}
+ const b=$('btn');if(st==='play'){$('ob').textContent=q?`${si+1}/${LV[lv].s.length} · ${q.t}`:'';$('tm').textContent='⏱ '+Math.ceil(timer)+'s';
+  let lab='Tương tác',on=!!near;if(near){if(near.dr)lab=(near.dr.o?'Đóng':'Mở')+' cửa '+near.dr.n;else lab=q&&q.o===near.id?q.v:near.nm}b.textContent=lab;b.classList.toggle('on',on)}}
+let last=0;function loop(t){const dt=Math.min(.05,(t-last)/1000);last=t;upd(dt);draw(t);requestAnimationFrame(loop)}
+let mn='main';
+function menu(m){if(m)mn=m;applyLV();st='menu';const ov=$('ov'),o=OF[oi];ov.style.display='flex';let h='';
+ if(mn==='main')h=`<h1>🏥 Điều dưỡng khoa Ngoại</h1><small>Mô phỏng công việc điều dưỡng</small><br><button onclick="menu('lv')">▶ Chơi mới</button><br><button onclick="menu('outfit')">👕 Thay đồ</button>`;
+ else if(mn==='lv')h=`<h1>Chọn màn</h1><div>${LV.map((l,i)=>`<button ${i<unlocked?'':'disabled'} onclick="start(${i})">${l.n}</button><br>`).join('')}</div><button onclick="menu('main')">◀ Quay lại</button>`;
+ else h=`<h1>Thay đồ</h1><small>Đang mặc: ${o.n}</small><div>${OF.map((q,i)=>`<span class="sw ${i==oi?'s':''}" style="background:${q.t}" onclick="oi=${i};menu()" title="${q.n}"></span>`).join('')}</div><button onclick="menu('main')">◀ Quay lại</button>`;
+ ov.innerHTML='<div class="p">'+h+'</div>'}
+let pend=null;function applyLV(){if(pend){LV=pend;pend=null}}
+let lastJ='';
+function pull(){fetch('levels.json?'+Date.now()).then(r=>r.json()).then(a=>{const j=JSON.stringify(a);if(j===lastJ)return;lastJ=j;const v=a.filter(l=>l&&l.n&&l.t>0&&Array.isArray(l.s)).map(l=>({n:l.n,t:l.t,s:l.s.filter(q=>q&&O.some(o=>o.id===q.o))})).filter(l=>l.s.length);if(!v.length)return;pend=v;if(st==='menu')menu()}).catch(()=>{})}
+pull();setInterval(pull,20000);
+menu();requestAnimationFrame(loop);
+</script></body></html>
